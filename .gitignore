@@ -1,0 +1,41 @@
+# ----- Xmake -----
+build/
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.exe
+*.pdb
+
+# auto-generated files
+xmake.lua.bak
+xmake.lua.user
+xmake.lock
+xmake.cache
+xmake.d
+
+.xmake/
+
+# ----- IDEs / editors -----
+# Visual Studio
+.vscode/
+*.vcxproj*
+*.sln
+*.user
+*.opensdf
+*.sdf
+
+# Jetbrains
+.idea/
+
+# ----- OS files -----
+# macOS
+.DS_Store
+
+# Linux
+*~
+*.swp
+
+# ----- Logs -----
+*.log

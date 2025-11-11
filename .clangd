@@ -1,0 +1,20 @@
+CompileFlags:
+  Add: [-std=c++17]
+
+Diagnostics:
+  ClangTidy:
+    Add: [
+      "clang-analyzer-*", 
+      "bugprone-*", 
+      "performance-*", 
+    ]
+
+    Remove: [
+      "modernize-use-auto",
+      "modernize-use-trailing-return-type", 
+      "misc-unused-using-decls",
+      "readability-*"
+    ]
+
+InlayHints:
+  Enabled: No

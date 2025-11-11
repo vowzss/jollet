@@ -1,0 +1,63 @@
+BasedOnStyle: LLVM
+
+# Indentation
+# =========================
+IndentWidth: 4
+ContinuationIndentWidth: 4
+IndentCaseLabels: true
+UseTab: Never
+ColumnLimit: 150
+
+# Pointers & references
+# =========================
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+# Includes
+# =========================
+SortIncludes: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<([a-zA-Z0-9_/]+)>$'
+    Priority: 1   # Standard headers
+  - Regex: '^<.*\.h>$'
+    Priority: 2   # Third-party headers
+  - Regex: '^".*"$'
+    Priority: 3   # Project headers
+
+# Alignment
+# =========================
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: Left
+
+AlignConsecutiveBitFields: Consecutive
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: false
+
+PackConstructorInitializers: CurrentLine
+
+# Short constructs
+# =========================
+AllowShortEnumsOnASingleLine: false
+AllowShortBlocksOnASingleLine: true
+AllowShortCaseExpressionOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: true
+
+# Braces / brace wrapping
+# =========================
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterStruct: false
+  AfterFunction: false
+  AfterEnum: true
+  AfterNamespace: true
+  AfterCaseLabel: false
+  AfterControlStatement: Never
+
+# Namespaces
+# =========================
+NamespaceIndentation: All
+FixNamespaceComments: false
