@@ -6,7 +6,7 @@ IndentWidth: 4
 ContinuationIndentWidth: 4
 IndentCaseLabels: true
 UseTab: Never
-ColumnLimit: 150
+ColumnLimit: 120
 
 # Pointers & references
 # =========================
@@ -31,7 +31,7 @@ AlignAfterOpenBracket: Align
 AlignArrayOfStructures: Left
 
 AlignConsecutiveBitFields: Consecutive
-AlignConsecutiveAssignments: true
+AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 
 PackConstructorInitializers: CurrentLine

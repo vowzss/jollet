@@ -9,15 +9,15 @@
 namespace jollet::utils::string
 {
     // ASCII whitespace
-    constexpr uint32_t TAB   = 0x09;
-    constexpr uint32_t LF    = 0x0A;
-    constexpr uint32_t CR    = 0x0D;
+    constexpr uint32_t TAB = 0x09;
+    constexpr uint32_t LF = 0x0A;
+    constexpr uint32_t CR = 0x0D;
     constexpr uint32_t SPACE = 0x20;
 
     // ASCII control characters
     constexpr uint32_t ASCII_CONTROL_START = 0x00;
-    constexpr uint32_t ASCII_CONTROL_END   = 0x1F;
-    constexpr uint32_t DEL                 = 0x7F;
+    constexpr uint32_t ASCII_CONTROL_END = 0x1F;
+    constexpr uint32_t DEL = 0x7F;
 
     constexpr bool is_space(uint32_t cp) { return cp == TAB || cp == LF || cp == CR || cp == SPACE; }
     constexpr bool is_control(uint32_t cp) { return cp < 0x20 || cp == DEL; }
@@ -27,13 +27,11 @@ namespace jollet::utils::string
         result.reserve(str.size());
 
         for (char c : str) {
-            if ((c < 0x20 && c != SPACE) || c == DEL) {
+            if ((c < 0x20 && c != SPACE) || c == DEL)
                 continue;
-            }
 
-            if (c == '\t' || c == '\n' || c == '\r') {
+            if (c == '\t' || c == '\n' || c == '\r')
                 c = ' ';
-            }
 
             result += c;
         }
@@ -56,15 +54,14 @@ namespace jollet::utils::string
     }
 
     inline void remove_whitespace(std::string& str) {
-        size_t dst      = 0;
+        size_t dst = 0;
         bool need_space = false;
 
         for (size_t src = 0; src < str.size(); ++src) {
             char c = str[src];
 
-            if ((c < 0x20 || c == 0x7F) && c != SPACE && c != '\t' && c != '\n' && c != '\r') {
+            if ((c < 0x20 || c == 0x7F) && c != SPACE && c != '\t' && c != '\n' && c != '\r')
                 continue;
-            }
 
             if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
                 need_space = true;
@@ -73,6 +70,7 @@ namespace jollet::utils::string
 
             if (need_space && dst > 0)
                 str[dst++] = ' ';
+
             str[dst++] = c;
             need_space = false;
         }
