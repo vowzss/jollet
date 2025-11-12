@@ -2,6 +2,7 @@
 
 #include <doctest/doctest.h>
 
+#include "jollet/providers/json.h"
 #include "jollet/types/jvalue.h"
 #include "jollet/utils/string.h"
 
@@ -154,12 +155,12 @@ TEST_CASE("types/jvalue.h: containers") {
         root["numbers"][1] = jvalue(2);
         root["numbers"][2] = jvalue(3);
 
-        root["info"]["name"] = jvalue("Alice");
+        root["info"]["name"] = jvalue("Chad");
         root["info"]["age"] = jvalue(30);
 
         CHECK(root["numbers"][0].as_int() == 1);
         CHECK(root["numbers"][2].as_int() == 3);
-        CHECK(root["info"]["name"].as_string() == "Alice");
+        CHECK(root["info"]["name"].as_string() == "Chad");
         CHECK(root["info"]["age"].as_int() == 30);
     }
 }
@@ -183,5 +184,37 @@ TEST_CASE("types/jvalue.h: equality") {
         jvalue j2(obj);
 
         CHECK(j1 == j2);
+    }
+}
+
+TEST_CASE("providers/json.h: stringify") {
+    jvalue root(jvalue::jobject{});
+
+    root["numbers"][0] = jvalue(1);
+    root["numbers"][1] = jvalue(2);
+    root["numbers"][2] = jvalue(3);
+
+    root["info"]["name"] = jvalue("Chad");
+    root["info"]["age"] = jvalue(30);
+    root["info"]["skills"][0] = jvalue("C++");
+    root["info"]["skills"][1] = jvalue("Python");
+
+    SUBCASE("compact JSON") {
+        std::string compact = providers::json::stringify(root);
+        std::cout << "Compact JSON:\n" << compact << "\n";
+
+        CHECK(!compact.empty());
+        CHECK(compact.find("Chad") != std::string::npos);
+        CHECK(compact.find("C++") != std::string::npos);
+    }
+
+    SUBCASE("pretty JSON") {
+        std::string pretty = providers::json::stringify(root, true);
+        std::cout << "Pretty JSON:\n" << pretty << "\n";
+
+        CHECK(!pretty.empty());
+        CHECK(pretty.find("\n") != std::string::npos);
+        CHECK(pretty.find("Chad") != std::string::npos);
+        CHECK(pretty.find("Python") != std::string::npos);
     }
 }
