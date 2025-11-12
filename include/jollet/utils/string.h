@@ -4,8 +4,6 @@
 #include <cstdint>
 #include <string>
 
-#include <utf8.h>
-
 namespace jollet::utils::string
 {
     // ASCII whitespace

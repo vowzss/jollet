@@ -7,8 +7,6 @@ set_languages("cxx17")
 add_rules("mode.debug", "mode.release")
 
 -- Dependencies
-add_requires("conan::spdlog/1.16.0", {alias = "spdlog"})
-add_requires("conan::utfcpp/4.0.8",  {alias = "utfcpp"})
 add_requires("conan::doctest/2.4.12", {alias = "doctest"})
 
 -- Library project
@@ -19,9 +17,6 @@ target("jollet")
     -- Headers files
     add_includedirs("include", {public = true})
     add_headerfiles("include/(**.h)")
-    
-    -- Link dependencies
-    add_packages("spdlog", "utfcpp")
     
     -- Build modes
     if is_mode("debug") then
@@ -40,7 +35,7 @@ target("jollet_tests")
 
     add_files("tests/**.cpp")
 
-    add_packages("spdlog", "utfcpp", "doctest")
+    add_packages("doctest")
 
     set_rundir("$(projectdir)/tests")
 target_end()
