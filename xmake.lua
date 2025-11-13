@@ -1,5 +1,5 @@
 -- Project settings
-set_project("jollet")
+set_project("serris")
 set_version("1.0.0")
 set_languages("cxx17")
 
@@ -10,9 +10,9 @@ add_rules("mode.debug", "mode.release")
 add_requires("conan::doctest/2.4.12", {alias = "doctest"})
 
 -- Library project
-target("jollet")
+target("serris")
     set_kind("headeronly")
-    set_basename("jollet")
+    set_basename("serris")
 
     -- Headers files
     add_includedirs("include", {public = true})
@@ -29,9 +29,9 @@ target("jollet")
 target_end()
 
 -- Tests project
-target("jollet_tests")
+target("serris_tests")
     set_kind("binary")
-    add_deps("jollet")
+    add_deps("serris")
 
     add_files("tests/**.cpp")
 

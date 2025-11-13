@@ -6,7 +6,7 @@
 #include <variant>
 #include <vector>
 
-namespace jollet::types
+namespace serris::types
 {
     struct jvalue {
         using jobject = std::unordered_map<std::string, jvalue>;
