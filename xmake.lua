@@ -1,41 +1,48 @@
--- Project settings
+-- project metadata
 set_project("serris")
 set_version("1.0.0")
 set_languages("cxx17")
 
--- Build modes
+-- build modes
 add_rules("mode.debug", "mode.release")
 
--- Dependencies
+-- build settings
+if is_mode("debug") then
+    set_symbols("debug")
+    set_optimize("none")
+else
+    set_symbols("hidden")
+    set_optimize("fastest")
+end
+
+-- dependencies
 add_requires("conan::doctest/2.4.12", {alias = "doctest"})
 
--- Library project
+-- core target
 target("serris")
-    set_kind("headeronly")
-    set_basename("serris")
+    set_kind("shared")
+    set_filename("serris")
 
-    -- Headers files
+    -- headers
+    add_headerfiles("include/serris/(**.h)")
     add_includedirs("include", {public = true})
-    add_headerfiles("include/(**.h)")
-    
-    -- Build modes
-    if is_mode("debug") then
-        set_symbols("debug")
-        set_optimize("none")
-    else
-        set_symbols("hidden")
-        set_optimize("fastest")
-    end
+
+    -- sources
+    add_files("src/*.cpp")
+    add_files("src/**/*.cpp")
 target_end()
 
--- Tests project
+-- test project
 target("serris_tests")
     set_kind("binary")
+    set_rundir("$(projectdir)/tests")
+
+    -- link
     add_deps("serris")
 
-    add_files("tests/**.cpp")
-
+    -- dependencies
     add_packages("doctest")
 
-    set_rundir("$(projectdir)/tests")
+    -- sources
+    add_files("tests/*.cpp")
 target_end()

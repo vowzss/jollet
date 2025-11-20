@@ -1,4 +1,4 @@
-# ----- Xmake -----
+# --- Build artifacts ---
 build/
 *.o
 *.obj
@@ -8,18 +8,20 @@ build/
 *.exe
 *.pdb
 
-# auto-generated files
+# --- Xmake-specific files ---
+.xmake/
+
 xmake.lua.bak
 xmake.lua.user
 xmake.lock
 xmake.cache
 xmake.d
 
-.xmake/
-
-# ----- IDEs / editors -----
-# Visual Studio
+# --- IDEs / editors ---
+# Visual Studio Code
 .vscode/
+
+# Visual Studio
 *.vcxproj*
 *.sln
 *.user
@@ -29,13 +31,14 @@ xmake.d
 # Jetbrains
 .idea/
 
-# ----- OS files -----
+# --- OS-specific files ---
 # macOS
 .DS_Store
 
 # Linux
 *~
-*.swp
 
-# ----- Logs -----
+# --- Temporary files ---
 *.log
+*.tmp
+*.bak

@@ -1,63 +1,57 @@
 BasedOnStyle: LLVM
 
-# Indentation
+# indentation
 # =========================
+IndentPPDirectives: BeforeHash
 IndentWidth: 4
 ContinuationIndentWidth: 4
 IndentCaseLabels: true
 UseTab: Never
-ColumnLimit: 120
 
-# Pointers & references
+ColumnLimit: 150
+
+# pointers & references
 # =========================
 DerivePointerAlignment: false
 PointerAlignment: Left
 
-# Includes
+# includes
 # =========================
 SortIncludes: true
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^<([a-zA-Z0-9_/]+)>$'
-    Priority: 1   # Standard headers
-  - Regex: '^<.*\.h>$'
-    Priority: 2   # Third-party headers
-  - Regex: '^".*"$'
-    Priority: 3   # Project headers
+  # standard library
+  - Regex: '^<([a-zA-Z0-9_\/]+)>$'
+    Priority: 1
 
-# Alignment
+  # third-party headers
+  - Regex: "^<.*.(h|hpp)>$"
+    Priority: 2
+
+  # project headers
+  - Regex: '^serris\/.*$'
+    Priority: 3
+
+# alignment
 # =========================
 AlignAfterOpenBracket: Align
-AlignArrayOfStructures: Left
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowAllArgumentsOnNextLine: false
 
-AlignConsecutiveBitFields: Consecutive
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
+AlwaysBreakTemplateDeclarations: Yes
+AlwaysBreakBeforeMultilineStrings: false
 
-PackConstructorInitializers: CurrentLine
-
-# Short constructs
-# =========================
-AllowShortEnumsOnASingleLine: false
-AllowShortBlocksOnASingleLine: true
-AllowShortCaseExpressionOnASingleLine: true
-AllowShortCaseLabelsOnASingleLine: true
-AllowShortIfStatementsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: true
-
-# Braces / brace wrapping
-# =========================
-BreakBeforeBraces: Custom
+# braces
+BreakBeforeBraces: Attach
 BraceWrapping:
-  AfterClass: true
-  AfterStruct: false
-  AfterFunction: false
-  AfterEnum: true
-  AfterNamespace: true
-  AfterCaseLabel: false
-  AfterControlStatement: Never
+  AfterControlStatement: true
 
-# Namespaces
+# short constructs
+# =========================
+AllowShortBlocksOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: true
+
+# namespaces
 # =========================
 NamespaceIndentation: All
 FixNamespaceComments: false
