@@ -1,7 +1,7 @@
 #pragma once
 
 #if defined(_WIN32) || defined(_WIN64)
-    #ifdef SERRIS_EXPORT
+    #ifdef SERRIS_EXPORTS
         #define SERRIS_API __declspec(dllexport)
     #else
         #define SERRIS_API __declspec(dllimport)

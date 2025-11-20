@@ -8,12 +8,7 @@
 namespace serris::providers {
     class json {
       public:
-        SERRIS_API static std::string stringify(const types::jvalue&, bool pretty = false);
-
-      private:
-        static std::string stringify_compact(const types::jvalue&);
-        static std::string stringify_pretty(const types::jvalue&, int indent);
-
-        static std::string escape(const std::string&);
+        SERRIS_API static std::string serialize(const types::jvalue&, bool pretty = false);
+        SERRIS_API static types::jvalue deserialize(const std::string& str);
     };
 }

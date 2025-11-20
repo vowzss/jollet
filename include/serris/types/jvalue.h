@@ -11,8 +11,6 @@ namespace serris::types {
         using jobject = std::unordered_map<std::string, jvalue>;
         using jarray = std::vector<jvalue>;
 
-        using number_t = std::variant<int64_t, double>;
-
         template <typename T>
         using enable_if_arithmetic_t = std::enable_if_t<std::is_arithmetic_v<T> && !std::is_same_v<T, bool>, int>;
 
@@ -20,25 +18,25 @@ namespace serris::types {
         using disable_if_arithmetic_t = std::enable_if_t<!std::is_arithmetic_v<T>, int>;
 
       private:
-        std::variant<std::monostate, bool, number_t, std::string, jobject, jarray> value_;
+        std::variant<std::monostate, bool, int64_t, double, std::string, jobject, jarray> value_;
 
       public:
         explicit jvalue() : value_(std::monostate{}) {}
         explicit jvalue(bool val) : value_(val) {}
 
-        // --- number types ctor ---
-        template <typename T, enable_if_arithmetic_t<T> = 0>
-        explicit jvalue(T val) {
-            if constexpr (std::is_floating_point_v<T>) {
-                value_ = number_t(static_cast<double>(val));
-            } else {
-                value_ = number_t(static_cast<int64_t>(val));
-            }
-        }
-
         // --- string-like types ctor ---
         template <typename T, std::enable_if_t<std::is_convertible_v<T, std::string>, int> = 0>
         explicit jvalue(T&& val) : value_(std::forward<T>(val)) {}
+
+        // --- number types ctor ---
+        template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+        explicit jvalue(T val) {
+            if constexpr (std::is_floating_point_v<T>) {
+                value_ = static_cast<double>(val);
+            } else {
+                value_ = static_cast<int64_t>(val);
+            }
+        }
 
         // --- object type (copy + move) ctor ---
         explicit jvalue(const jobject& val) : value_(val) {}
@@ -51,10 +49,12 @@ namespace serris::types {
         // --- accessors (arithmetic) ---
         template <typename T, enable_if_arithmetic_t<T> = 0>
         std::optional<T> try_as() const {
-            if (const number_t* val = std::get_if<number_t>(&value_)) {
-                return std::visit([](auto&& v) { return static_cast<T>(v); }, *val);
+            if (const int64_t* i = std::get_if<int64_t>(&value_)) {
+                return static_cast<T>(*i);
             }
-
+            if (const double* d = std::get_if<double>(&value_)) {
+                return static_cast<T>(*d);
+            }
             return std::nullopt;
         }
 
@@ -98,6 +98,9 @@ namespace serris::types {
             return std::nullopt;
         }
 
+        const std::string& as_string() const { return as<std::string>(); }
+        const std::string* try_as_string() const { return try_as<std::string>(); }
+
         int as_int() const { return as<int>(); }
         std::optional<int> try_as_int() const { return try_as<int>(); }
 
@@ -112,9 +115,6 @@ namespace serris::types {
 
         double as_double() const { return as<double>(); }
         std::optional<double> try_as_double() const { return try_as<double>(); }
-
-        const std::string& as_string() const { return as<std::string>(); }
-        const std::string* try_as_string() const { return try_as<std::string>(); }
 
         const jobject& as_object() const { return as<jobject>(); }
         const jobject* try_as_object() const { return try_as<jobject>(); }
@@ -186,5 +186,14 @@ namespace serris::types {
 
         // --- utilities ---
         constexpr bool is_null() const { return std::holds_alternative<std::monostate>(value_); }
+        constexpr bool is_bool() const { return std::holds_alternative<bool>(value_); }
+        constexpr bool is_string() const { return std::holds_alternative<std::string>(value_); }
+
+        constexpr bool is_integer() const { return std::holds_alternative<int64_t>(value_); }
+        constexpr bool is_floating() const { return std::holds_alternative<double>(value_); }
+        constexpr bool is_number() const { return is_integer() || is_floating(); }
+
+        constexpr bool is_array() const { return std::holds_alternative<jarray>(value_); }
+        constexpr bool is_object() const { return std::holds_alternative<jobject>(value_); }
     };
 }

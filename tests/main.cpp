@@ -4,42 +4,9 @@
 
 #include "serris/providers/json.h"
 #include "serris/types/jvalue.h"
-#include "serris/utils/string.h"
 
 using namespace serris;
-using namespace serris::utils;
 using namespace serris::types;
-
-TEST_CASE("utils/string.h") {
-    std::string s = "\t\"Hello \n World\"  \t  !\b\f\rTest";
-
-    SUBCASE("sanitize") {
-        std::string copy = s;
-        string::sanitize(copy);
-
-        CHECK(copy.find(' ') != std::string::npos);
-        CHECK(copy.find('\t') == std::string::npos);
-        CHECK(copy.find('\n') == std::string::npos);
-        CHECK(copy.find('\r') == std::string::npos);
-    }
-
-    SUBCASE("remove_quotes") {
-        std::string copy = s;
-        string::remove_quotes(copy);
-
-        CHECK(copy.find('"') == std::string::npos);
-    }
-
-    SUBCASE("remove_whitespace") {
-        std::string copy = s;
-        string::remove_whitespace(copy);
-
-        CHECK(copy.find('\t') == std::string::npos);
-        CHECK(copy.find('\n') == std::string::npos);
-        CHECK(copy.find('\r') == std::string::npos);
-        CHECK(copy.find('\f') == std::string::npos);
-    }
-}
 
 TEST_CASE("types/jvalue.h: basic types") {
 
@@ -111,7 +78,10 @@ TEST_CASE("types/jvalue.h: basic types") {
 TEST_CASE("types/jvalue.h: containers") {
 
     SUBCASE("objects") {
-        jvalue::jobject obj{{"a", jvalue(1)}, {"b", jvalue(2)}};
+        jvalue::jobject obj{
+            {"a", jvalue(1)},
+            {"b", jvalue(2)}
+        };
         jvalue j_obj(obj);
 
         CHECK(j_obj["a"].as_int() == 1);
@@ -173,7 +143,9 @@ TEST_CASE("types/jvalue.h: equality") {
     }
 
     SUBCASE("object equality") {
-        jvalue::jobject obj{{"x", jvalue(1)}};
+        jvalue::jobject obj{
+            {"x", jvalue(1)}
+        };
         jvalue j1(obj);
         jvalue j2(obj);
 
@@ -181,9 +153,8 @@ TEST_CASE("types/jvalue.h: equality") {
     }
 }
 
-TEST_CASE("providers/json.h: stringify") {
+TEST_CASE("providers/json.h: serialize") {
     jvalue root(jvalue::jobject{});
-
     root["numbers"][0] = jvalue(1);
     root["numbers"][1] = jvalue(2);
     root["numbers"][2] = jvalue(3);
@@ -193,8 +164,13 @@ TEST_CASE("providers/json.h: stringify") {
     root["info"]["skills"][0] = jvalue("C++");
     root["info"]["skills"][1] = jvalue("Python");
 
+    root["pi"] = jvalue(3.141592653589793);
+    root["big_number"] = jvalue(9223372036854775807);
+    root["small_number"] = jvalue(-32768);
+    root["float_val"] = jvalue(2.71828);
+
     SUBCASE("compact JSON") {
-        std::string compact = providers::json::stringify(root);
+        std::string compact = providers::json::serialize(root);
         std::cout << "Compact JSON:\n" << compact << "\n";
 
         CHECK(!compact.empty());
@@ -203,7 +179,7 @@ TEST_CASE("providers/json.h: stringify") {
     }
 
     SUBCASE("pretty JSON") {
-        std::string pretty = providers::json::stringify(root, true);
+        std::string pretty = providers::json::serialize(root, true);
         std::cout << "Pretty JSON:\n" << pretty << "\n";
 
         CHECK(!pretty.empty());
@@ -211,4 +187,48 @@ TEST_CASE("providers/json.h: stringify") {
         CHECK(pretty.find("Chad") != std::string::npos);
         CHECK(pretty.find("Python") != std::string::npos);
     }
+}
+
+TEST_CASE("providers/json.h: deserialize") {
+    std::string json_str = R"({
+        "numbers": [1, 2, 3],
+        "info": {
+            "name": "Chad",
+            "age": 30,
+            "skills": ["C++", "Python"]
+        },
+        "pi": 3.141592653589793,
+        "big_number": 9223372036854775807,
+        "small_number": -32768,
+        "float_val": 2.71828
+    })";
+
+    types::jvalue root = serris::providers::json::deserialize(json_str);
+
+    const types::jvalue::jobject* obj = root.try_as_object();
+    REQUIRE(obj != nullptr);
+
+    const types::jvalue::jarray* numbers = (*obj).at("numbers").try_as_array();
+    REQUIRE(numbers != nullptr);
+    CHECK((*numbers)[0].try_as_int().value() == 1);
+    CHECK((*numbers)[1].try_as_int().value() == 2);
+    CHECK((*numbers)[2].try_as_int().value() == 3);
+
+    const types::jvalue::jobject* info = root["info"].try_as_object();
+    REQUIRE(info != nullptr);
+    const auto* name = info->at("name").try_as_string();
+    REQUIRE(name != nullptr);
+    CHECK(*name == "Chad");
+
+    CHECK(info->at("age").try_as_int().value() == 30);
+    CHECK(root["big_number"].try_as_long().value() == 9223372036854775807LL);
+    CHECK(root["small_number"].try_as_short().value() == -32768);
+
+    CHECK(root["pi"].try_as_double().value() == doctest::Approx(3.141592653589793));
+    CHECK(root["float_val"].try_as_float().value() == doctest::Approx(2.71828f));
+
+    const auto* skills = info->at("skills").try_as_array();
+    REQUIRE(skills != nullptr);
+    CHECK(*(*skills)[0].try_as_string() == "C++");
+    CHECK(*(*skills)[1].try_as_string() == "Python");
 }

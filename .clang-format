@@ -21,7 +21,7 @@ SortIncludes: true
 IncludeBlocks: Regroup
 IncludeCategories:
   # standard library
-  - Regex: '^<([a-zA-Z0-9_\/]+)>$'
+  - Regex: '^<[a-zA-Z0-9_\/]+>$'
     Priority: 1
 
   # third-party headers
@@ -29,14 +29,16 @@ IncludeCategories:
     Priority: 2
 
   # project headers
-  - Regex: '^serris\/.*$'
+  - Regex: '^"serris/.*"$'
     Priority: 3
 
 # alignment
 # =========================
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: DontAlign
 AllowShortFunctionsOnASingleLine: InlineOnly
 AllowAllArgumentsOnNextLine: false
+
+AlignArrayOfStructures: Left
 
 AlwaysBreakTemplateDeclarations: Yes
 AlwaysBreakBeforeMultilineStrings: false
