@@ -17,12 +17,19 @@ else
 end
 
 -- dependencies
+add_requires("conan::fast_float/8.0.2", {alias = "fast_float"})
+add_requires("conan::utfcpp/4.0.8", {alias = "utfcpp"})
+
 add_requires("conan::doctest/2.4.12", {alias = "doctest"})
 
 -- core target
 target("serris_core")
     set_kind("shared")
     set_basename("serris")
+
+    -- dependencies
+    add_packages("fast_float")
+    add_packages("utfcpp")
 
     -- headers
     add_headerfiles("include/serris/(**.h)")
