@@ -1,5 +1,7 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <filesystem>
+#include <optional>
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
 #include "serris/providers/json.h"
@@ -7,6 +9,20 @@
 
 using namespace serris;
 using namespace serris::types;
+
+namespace fs = std::filesystem;
+
+static std::string format_duration(std::chrono::nanoseconds ns) {
+    using namespace std::chrono;
+
+    auto ms = duration_cast<milliseconds>(ns) % 1000;
+    auto sec = duration_cast<seconds>(ns) % 60;
+    auto min = duration_cast<minutes>(ns);
+
+    std::ostringstream oss;
+    oss << min.count() << "m " << sec.count() << "s " << ms.count() << "ms";
+    return oss.str();
+}
 
 TEST_CASE("types/jvalue.h: basic types") {
 
@@ -38,7 +54,7 @@ TEST_CASE("types/jvalue.h: basic types") {
         CHECK(j_int.as_short() == 123);
         CHECK(j_int.as_long() == 123);
 
-        auto try_val = j_int.try_as<int>();
+        auto try_val = j_int.try_as_int();
         REQUIRE(try_val);
         CHECK(*try_val == 123);
     }
@@ -203,7 +219,7 @@ TEST_CASE("providers/json.h: deserialize") {
         "float_val": 2.71828
     })";
 
-    types::jvalue root = serris::providers::json::deserialize(json_str);
+    types::jvalue root = providers::json::deserialize(json_str);
 
     const types::jvalue::jobject* obj = root.try_as_object();
     REQUIRE(obj != nullptr);
@@ -231,4 +247,17 @@ TEST_CASE("providers/json.h: deserialize") {
     REQUIRE(skills != nullptr);
     CHECK(*(*skills)[0].try_as_string() == "C++");
     CHECK(*(*skills)[1].try_as_string() == "Python");
+}
+
+TEST_CASE("providers/json.h: from_file") {
+    fs::path rssPath = fs::absolute("resources");
+    fs::path fullPath = rssPath / "sample_min.json";
+    std::cout << fullPath << "\n";
+
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+    std::optional<jvalue> root = providers::json::from_file(fullPath);
+    std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+
+    std::cout << "Took: " << format_duration(end - start) << 'ms.\n';
+    CHECK(root.has_value());
 }

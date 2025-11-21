@@ -2,14 +2,16 @@
 
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <variant>
 #include <vector>
 
+#include <tsl/robin_map.h>
+
 namespace serris::types {
+
     struct jvalue {
-        using jobject = std::unordered_map<std::string, jvalue>;
-        using jarray = std::vector<jvalue>;
+        using jarray = std::vector<std::unique_ptr<jvalue>>;
+        using jobject = tsl::robin_map<std::string, std::unique_ptr<jvalue>>;
 
         template <typename T>
         using enable_if_arithmetic_t = std::enable_if_t<std::is_arithmetic_v<T> && !std::is_same_v<T, bool>, int>;
@@ -24,9 +26,9 @@ namespace serris::types {
         explicit jvalue() : value_(std::monostate{}) {}
         explicit jvalue(bool val) : value_(val) {}
 
-        // --- string-like types ctor ---
-        template <typename T, std::enable_if_t<std::is_convertible_v<T, std::string>, int> = 0>
-        explicit jvalue(T&& val) : value_(std::forward<T>(val)) {}
+        // --- string type ctor ---
+        explicit jvalue(const std::string& s) : value_(s) {}
+        explicit jvalue(std::string&& s) : value_(std::move(s)) {}
 
         // --- number types ctor ---
         template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
@@ -38,150 +40,135 @@ namespace serris::types {
             }
         }
 
-        // --- object type (copy + move) ctor ---
+        // --- object type ctor ---
         explicit jvalue(const jobject& val) : value_(val) {}
         explicit jvalue(jobject&& val) : value_(std::move(val)) {}
 
-        // --- array type (copy + move) ctor ---
+        // --- array type ctor ---
         explicit jvalue(const jarray& val) : value_(val) {}
         explicit jvalue(jarray&& val) : value_(std::move(val)) {}
 
-        // --- accessors (arithmetic) ---
-        template <typename T, enable_if_arithmetic_t<T> = 0>
+        // --- accessors ---
+        template <typename T>
         std::optional<T> try_as() const {
-            if (const int64_t* i = std::get_if<int64_t>(&value_)) {
-                return static_cast<T>(*i);
+            if constexpr (std::is_arithmetic_v<T>) {
+                if (const int64_t* v = std::get_if<int64_t>(&value_)) {
+                    return static_cast<T>(*v);
+                }
+                if (const double* v = std::get_if<double>(&value_)) {
+                    return static_cast<T>(*v);
+                }
+                return std::nullopt;
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                if (const std::string* v = std::get_if<std::string>(&value_)) {
+                    return *v;
+                }
+                return std::nullopt;
+            } else if constexpr (std::is_same_v<T, jarray>) {
+                if (const jarray* v = std::get_if<jarray>(&value_)) {
+                    return *v;
+                }
+                return std::nullopt;
+            } else if constexpr (std::is_same_v<T, jobject>) {
+                if (const jobject* v = std::get_if<jobject>(&value_)) {
+                    return *v;
+                }
+                return std::nullopt;
+            } else {
+                static_assert(false, "type is not supported in jvalue");
             }
-            if (const double* d = std::get_if<double>(&value_)) {
-                return static_cast<T>(*d);
-            }
-            return std::nullopt;
         }
 
         template <typename T, enable_if_arithmetic_t<T> = 0>
         T as() const {
-            if (const std::optional<T> val = try_as<T>()) {
-                return *val;
-            }
-
+            if (auto val = try_as<T>()) return *val;
             throw std::bad_variant_access();
         }
 
-        // --- accessors (non-arithmetic) ---
-        template <typename T, disable_if_arithmetic_t<T> = 0>
-        const T* try_as() const {
-            return std::get_if<T>(&value_);
-        }
-
-        template <typename T, disable_if_arithmetic_t<T> = 0>
-        const T& as() const {
-            if (const T* v = try_as<T>()) {
-                return *v;
-            }
-
-            throw std::bad_variant_access();
-        }
-
-        // --- accessors (typed aliases for common types) ---
-        bool as_bool() const {
-            if (auto val = try_as_bool()) {
-                return *val;
-            }
-
-            throw std::bad_variant_access();
-        }
+        // --- accessors (aliases for common types) ---
         std::optional<bool> try_as_bool() const {
-            if (const bool* val = std::get_if<bool>(&value_)) {
-                return *val;
-            }
-
+            if (const bool* val = std::get_if<bool>(&value_)) return *val;
             return std::nullopt;
         }
+        bool as_bool() const {
+            if (std::optional<bool> val = try_as_bool()) return *val;
+            throw std::bad_variant_access();
+        }
 
-        const std::string& as_string() const { return as<std::string>(); }
-        const std::string* try_as_string() const { return try_as<std::string>(); }
+        const std::string* try_as_string() const {
+            if (const std::string* val = std::get_if<std::string>(&value_)) return val;
+            return nullptr;
+        }
+        const std::string& as_string() const {
+            if (const std::string* val = try_as_string()) return *val;
+            throw std::bad_variant_access();
+        }
 
-        int as_int() const { return as<int>(); }
         std::optional<int> try_as_int() const { return try_as<int>(); }
+        int as_int() const { return as<int>(); }
 
-        short as_short() const { return as<short>(); }
         std::optional<short> try_as_short() const { return try_as<short>(); }
+        short as_short() const { return as<short>(); }
 
-        long as_long() const { return as<long>(); }
         std::optional<long> try_as_long() const { return try_as<long>(); }
+        long as_long() const { return as<long>(); }
 
-        float as_float() const { return as<float>(); }
         std::optional<float> try_as_float() const { return try_as<float>(); }
+        float as_float() const { return as<float>(); }
 
-        double as_double() const { return as<double>(); }
         std::optional<double> try_as_double() const { return try_as<double>(); }
+        double as_double() const { return as<double>(); }
 
-        const jobject& as_object() const { return as<jobject>(); }
-        const jobject* try_as_object() const { return try_as<jobject>(); }
+        const jobject* try_as_object() const {
+            if (const jobject* val = std::get_if<jobject>(&value_)) return val;
+            return nullptr;
+        }
+        const jobject& as_object() const {
+            if (const jobject* val = try_as_object()) return *val;
+            throw std::bad_variant_access();
+        }
 
-        const jarray& as_array() const { return as<jarray>(); }
-        const jarray* try_as_array() const { return try_as<jarray>(); }
+        const jarray* try_as_array() const {
+            if (const jarray* val = std::get_if<jarray>(&value_)) return val;
+            return nullptr;
+        }
+        const jarray& as_array() const {
+            if (const jarray* val = try_as_array()) return *val;
+            throw std::bad_variant_access();
+        }
 
         // --- equality operators ---
         bool operator==(const jvalue& other) const { return value_ == other.value_; }
         bool operator!=(const jvalue& other) const { return !(*this == other); }
 
-        // --- operator[] for objects ---
-        const jvalue& operator[](const std::string& key) const {
-            if (const jobject* v = std::get_if<jobject>(&value_)) {
-                return v->at(key);
+        // --- helpers ---
+        const jvalue* get(size_t idx) const {
+            if (const jarray* arr = std::get_if<jarray>(&value_)) {
+                if (idx < arr->size()) {
+                    return arr->at(idx).get();
+                }
             }
-
-            throw std::bad_variant_access();
+            return nullptr;
         }
 
-        jvalue& operator[](const std::string& key) {
-            if (std::holds_alternative<std::monostate>(value_)) {
-                value_ = jobject{};
-            }
-
-            if (jobject* v = std::get_if<jobject>(&value_)) {
-                return (*v)[key];
-            }
-
-            throw std::bad_variant_access();
-        }
-
-        jvalue& operator[](std::string&& key) {
-            if (std::holds_alternative<std::monostate>(value_)) {
-                value_ = jobject{};
-            }
-
-            if (jobject* v = std::get_if<jobject>(&value_)) {
-                return (*v)[std::move(key)];
-            }
-
-            throw std::bad_variant_access();
-        }
-
-        // --- operator[] for arrays ---
-        const jvalue& operator[](size_t idx) const {
-            if (const jarray* v = std::get_if<jarray>(&value_)) {
-                return v->at(idx);
-            }
-
-            throw std::bad_variant_access();
-        }
-
-        jvalue& operator[](size_t idx) {
+        jvalue& insert(size_t idx) {
             if (std::holds_alternative<std::monostate>(value_)) {
                 value_ = jarray{};
             }
 
-            if (jarray* v = std::get_if<jarray>(&value_)) {
-                if (idx >= v->size()) {
-                    v->resize(idx + 1);
+            if (jarray* arr = std::get_if<jarray>(&value_)) {
+                if (idx >= arr->size()) {
+                    arr->resize(idx + 1);
+
+                    if (!(*arr)[idx]) {
+                        (*arr)[idx] = std::make_unique<jvalue>();
+                    }
+
+                    return *(*arr)[idx];
                 }
 
-                return (*v)[idx];
+                throw std::bad_variant_access();
             }
-
-            throw std::bad_variant_access();
         }
 
         // --- utilities ---

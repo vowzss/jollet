@@ -1,8 +1,12 @@
 #include "serris/providers/json.h"
 
 #include <array>
+#include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <optional>
+#include <ostream>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -187,7 +191,7 @@ namespace serris::providers {
             throw std::runtime_error("unterminated string");
         }
 
-        inline types::jvalue parse_number(const std::string& s, size_t& pos) {
+        inline jvalue parse_number(const std::string& s, size_t& pos) {
             size_t start = pos;
             bool is_float = false;
 
@@ -201,181 +205,181 @@ namespace serris::providers {
             std::string num_str = s.substr(start, pos - start);
 
             if (is_float) {
-                return types::jvalue{std::stod(num_str)};
+                return jvalue{std::stod(num_str)};
             } else {
-                return types::jvalue{std::stoll(num_str)};
+                return jvalue{std::stoll(num_str)};
             }
         }
-    }
 
-    inline void serialize_impl(const types::jvalue& val, std::string& out, bool pretty, int indent) {
-        if (val.is_null()) {
+        inline void serialize_impl(const jvalue& val, std::string& out, bool pretty, int indent) {
+            if (val.is_null()) {
+                out += "null";
+                return;
+            }
+
+            if (std::optional<bool> v = val.try_as_bool()) {
+                out += *v ? "true" : "false";
+                return;
+            }
+
+            if (const std::string* v = val.try_as_string()) {
+                append_escaped(out, *v);
+                return;
+            }
+
+            if (val.is_number()) {
+                append_number(out, val);
+                return;
+            }
+
+            const std::string indent_str(indent, ' ');
+            const std::string indent_next(indent + 2, ' ');
+
+            if (const jvalue::jobject* obj = val.try_as_object()) {
+                out += '{';
+                if (pretty) out += '\n';
+
+                bool first = true;
+                for (const auto& [k, v] : *obj) {
+                    if (!first) out += pretty ? ",\n" : ",";
+                    if (pretty) out += indent_next;
+
+                    append_escaped(out, k);
+                    out += pretty ? ": " : ":";
+                    serialize_impl(v, out, pretty, indent + 2);
+                    first = false;
+                }
+
+                if (pretty) out += '\n' + indent_str;
+                out += '}';
+                return;
+            }
+
+            if (const jvalue::jarray* arr = val.try_as_array()) {
+                out += '[';
+                if (pretty) out += '\n';
+
+                bool first = true;
+                for (const auto& item : *arr) {
+                    if (!first) out += pretty ? ",\n" : ",";
+                    if (pretty) out += indent_next;
+
+                    serialize_impl(item, out, pretty, indent + 2);
+                    first = false;
+                }
+
+                if (pretty) out += '\n' + indent_str;
+                out += ']';
+                return;
+            }
+
             out += "null";
-            return;
         }
 
-        if (std::optional<bool> v = val.try_as_bool()) {
-            out += *v ? "true" : "false";
-            return;
-        }
-
-        if (const std::string* v = val.try_as_string()) {
-            append_escaped(out, *v);
-            return;
-        }
-
-        if (val.is_number()) {
-            append_number(out, val);
-            return;
-        }
-
-        const std::string indent_str(indent, ' ');
-        const std::string indent_next(indent + 2, ' ');
-
-        if (const jvalue::jobject* obj = val.try_as_object()) {
-            out += '{';
-            if (pretty) out += '\n';
-
-            bool first = true;
-            for (const auto& [k, v] : *obj) {
-                if (!first) out += pretty ? ",\n" : ",";
-                if (pretty) out += indent_next;
-
-                append_escaped(out, k);
-                out += pretty ? ": " : ":";
-                serialize_impl(v, out, pretty, indent + 2);
-                first = false;
-            }
-
-            if (pretty) out += '\n' + indent_str;
-            out += '}';
-            return;
-        }
-
-        if (const jvalue::jarray* arr = val.try_as_array()) {
-            out += '[';
-            if (pretty) out += '\n';
-
-            bool first = true;
-            for (const auto& item : *arr) {
-                if (!first) out += pretty ? ",\n" : ",";
-                if (pretty) out += indent_next;
-
-                serialize_impl(item, out, pretty, indent + 2);
-                first = false;
-            }
-
-            if (pretty) out += '\n' + indent_str;
-            out += ']';
-            return;
-        }
-
-        out += "null";
-    }
-
-    inline types::jvalue deserialize_impl(const std::string& s, size_t& pos) {
-        skip_whitespace(s, pos);
-        if (pos >= s.size()) {
-            throw std::runtime_error("Unexpected end of input");
-        }
-
-        char c = s[pos];
-
-        if (s.compare(pos, 4, "null") == 0) {
-            pos += 4;
-            return jvalue{};
-        }
-
-        if (s.compare(pos, 4, "true") == 0) {
-            pos += 4;
-            return jvalue{true};
-        }
-        if (s.compare(pos, 5, "false") == 0) {
-            pos += 5;
-            return jvalue{false};
-        }
-
-        if (c == '"') {
-            return jvalue{parse_string(s, pos)};
-        }
-
-        if (c == '-' || std::isdigit(c)) {
-            return parse_number(s, pos);
-        }
-
-        if (c == '{') {
-            jvalue::jobject obj = types::jvalue::jobject{};
-
-            ++pos;
+        inline jvalue deserialize_impl(const std::string& s, size_t& pos) {
             skip_whitespace(s, pos);
+            if (pos >= s.size()) {
+                throw std::runtime_error("Unexpected end of input");
+            }
 
-            bool first = true;
-            while (pos < s.size() && s[pos] != '}') {
-                if (!first) {
-                    if (s[pos] == ',') ++pos;
+            char c = s[pos];
+
+            if (s.compare(pos, 4, "null") == 0) {
+                pos += 4;
+                return jvalue{};
+            }
+
+            if (s.compare(pos, 4, "true") == 0) {
+                pos += 4;
+                return jvalue{true};
+            }
+            if (s.compare(pos, 5, "false") == 0) {
+                pos += 5;
+                return jvalue{false};
+            }
+
+            if (c == '"') {
+                return jvalue{parse_string(s, pos)};
+            }
+
+            if (c == '-' || std::isdigit(c)) {
+                return parse_number(s, pos);
+            }
+
+            if (c == '{') {
+                jvalue::jobject obj = jvalue::jobject{};
+
+                ++pos;
+                skip_whitespace(s, pos);
+
+                bool first = true;
+                while (pos < s.size() && s[pos] != '}') {
+                    if (!first) {
+                        if (s[pos] == ',') ++pos;
+                        skip_whitespace(s, pos);
+                    }
+
+                    std::string key = parse_string(s, pos);
+                    skip_whitespace(s, pos);
+
+                    if (pos >= s.size() || s[pos] != ':') {
+                        throw std::runtime_error("Expected ':' in object");
+                    }
+
+                    ++pos;
+                    obj[key] = deserialize_impl(s, pos);
+
+                    first = false;
                     skip_whitespace(s, pos);
                 }
 
-                std::string key = parse_string(s, pos);
-                skip_whitespace(s, pos);
-
-                if (pos >= s.size() || s[pos] != ':') {
-                    throw std::runtime_error("Expected ':' in object");
+                if (pos >= s.size() || s[pos] != '}') {
+                    throw std::runtime_error("Expected '}' at end of object");
                 }
 
                 ++pos;
-                obj[key] = deserialize_impl(s, pos);
+                return jvalue{std::move(obj)};
+            }
 
-                first = false;
+            // array
+            if (c == '[') {
+                jvalue::jarray arr = jvalue::jarray{};
+
+                ++pos;
                 skip_whitespace(s, pos);
-            }
 
-            if (pos >= s.size() || s[pos] != '}') {
-                throw std::runtime_error("Expected '}' at end of object");
-            }
+                bool first = true;
+                while (pos < s.size() && s[pos] != ']') {
+                    if (!first) {
+                        if (s[pos] == ',') ++pos;
+                        skip_whitespace(s, pos);
+                    }
 
-            ++pos;
-            return jvalue{std::move(obj)};
-        }
-
-        // array
-        if (c == '[') {
-            jvalue::jarray arr = types::jvalue::jarray{};
-
-            ++pos;
-            skip_whitespace(s, pos);
-
-            bool first = true;
-            while (pos < s.size() && s[pos] != ']') {
-                if (!first) {
-                    if (s[pos] == ',') ++pos;
+                    arr.push_back(deserialize_impl(s, pos));
+                    first = false;
                     skip_whitespace(s, pos);
                 }
 
-                arr.push_back(deserialize_impl(s, pos));
-                first = false;
-                skip_whitespace(s, pos);
+                if (pos >= s.size() || s[pos] != ']') {
+                    throw std::runtime_error("Expected ']' at end of array");
+                }
+
+                ++pos;
+                return jvalue{std::move(arr)};
             }
 
-            if (pos >= s.size() || s[pos] != ']') {
-                throw std::runtime_error("Expected ']' at end of array");
-            }
-
-            ++pos;
-            return jvalue{std::move(arr)};
+            throw std::runtime_error(std::string("Unexpected character '") + c + "'");
         }
-
-        throw std::runtime_error(std::string("Unexpected character '") + c + "'");
     }
 
-    std::string json::serialize(const types::jvalue& val, bool pretty) {
+    std::string json::serialize(const jvalue& val, bool pretty) {
         std::string out;
         out.reserve(256);
         serialize_impl(val, out, pretty, 0);
         return out;
     }
 
-    serris::types::jvalue json::deserialize(const std::string& str) {
+    jvalue json::deserialize(const std::string& str) {
         size_t pos = 0;
 
         jvalue result = deserialize_impl(str, pos);
@@ -386,5 +390,20 @@ namespace serris::providers {
         }
 
         return result;
+    }
+
+    std::optional<jvalue> json::from_file(const std::string& path) {
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            return std::nullopt;
+        }
+
+        try {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            return deserialize(buffer.str());
+        } catch (...) {
+            return std::nullopt;
+        }
     }
 }

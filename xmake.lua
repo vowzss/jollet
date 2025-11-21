@@ -17,8 +17,9 @@ else
 end
 
 -- dependencies
-add_requires("conan::fast_float/8.0.2", {alias = "fast_float"})
 add_requires("conan::utfcpp/4.0.8", {alias = "utfcpp"})
+add_requires("conan::fast_float/8.0.2", {alias = "fast_float"})
+add_requires("conan::tsl-robin-map/1.4.0", {alias = "tsl-robin-map"})
 
 add_requires("conan::doctest/2.4.12", {alias = "doctest"})
 
@@ -28,15 +29,15 @@ target("serris_core")
     set_basename("serris")
 
     -- dependencies
-    add_packages("fast_float")
     add_packages("utfcpp")
+    add_packages("fast_float", "tsl-robin-map")
 
     -- headers
     add_headerfiles("include/serris/(**.h)")
     add_includedirs("include", {public = true})
 
     -- sources
-    add_files("src/*.cpp")
+    -- add_files("src/*.cpp")
     add_files("src/**/*.cpp")
 
     add_defines("SERRIS_EXPORTS")
@@ -45,7 +46,6 @@ target_end()
 -- test project
 target("serris_tests")
     set_kind("binary")
-    set_rundir("$(projectdir)/tests")
 
     -- link
     add_deps("serris_core")
@@ -57,4 +57,14 @@ target("serris_tests")
 
     -- sources
     add_files("tests/*.cpp")
+
+    -- package
+    after_build(function (target)
+        local builddir = target:targetdir()
+        local srcdir = path.join("$(projectdir)", "resources")
+        local destdir = path.join(builddir, "resources")
+
+        os.mkdir(destdir)
+        os.cp(path.join(srcdir, "*"), destdir, {recursive = true})
+    end)
 target_end()
