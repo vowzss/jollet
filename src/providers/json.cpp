@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <ostream>
 #include <sstream>
@@ -84,12 +85,12 @@ namespace serris::providers {
 
         void append_number(std::string& out, const jvalue& val) {
             if (val.is_integer()) {
-                out += std::to_string(val.try_as<int64_t>().value());
+                out += std::to_string(val.try_as_double().value());
                 return;
             }
 
             if (val.is_floating()) {
-                double d = val.try_as<double>().value();
+                double d = val.try_as_double().value();
 
                 std::ostringstream oss;
                 oss << std::setprecision(17) << d;
@@ -246,7 +247,7 @@ namespace serris::providers {
 
                     append_escaped(out, k);
                     out += pretty ? ": " : ":";
-                    serialize_impl(v, out, pretty, indent + 2);
+                    serialize_impl(*v.get(), out, pretty, indent + 2);
                     first = false;
                 }
 
@@ -260,11 +261,11 @@ namespace serris::providers {
                 if (pretty) out += '\n';
 
                 bool first = true;
-                for (const auto& item : *arr) {
+                for (const auto& v : *arr) {
                     if (!first) out += pretty ? ",\n" : ",";
                     if (pretty) out += indent_next;
 
-                    serialize_impl(item, out, pretty, indent + 2);
+                    serialize_impl(*v.get(), out, pretty, indent + 2);
                     first = false;
                 }
 
@@ -327,7 +328,7 @@ namespace serris::providers {
                     }
 
                     ++pos;
-                    obj[key] = deserialize_impl(s, pos);
+                    obj[key] = std::make_unique<jvalue>(deserialize_impl(s, pos));
 
                     first = false;
                     skip_whitespace(s, pos);
@@ -355,7 +356,7 @@ namespace serris::providers {
                         skip_whitespace(s, pos);
                     }
 
-                    arr.push_back(deserialize_impl(s, pos));
+                    arr.emplace_back(deserialize_impl(s, pos));
                     first = false;
                     skip_whitespace(s, pos);
                 }

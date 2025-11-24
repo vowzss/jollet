@@ -12,26 +12,26 @@ if is_mode("debug") then
     set_symbols("debug")
     set_optimize("none")
 else
-    set_symbols("hidden")
+    --set_symbols("hidden")
     set_optimize("fastest")
 end
 
 -- dependencies
-add_requires("conan::utfcpp/4.0.8", {alias = "utfcpp"})
-add_requires("conan::fast_float/8.0.2", {alias = "fast_float"})
-add_requires("conan::tsl-robin-map/1.4.0", {alias = "tsl-robin-map"})
+add_requires("utfcpp",      { alias = "utfcpp" })
+add_requires("fast_float",  { alias = "fast_float" })
+add_requires("robin-map",   { alias = "fast_map" })
 
-add_requires("conan::doctest/2.4.12", {alias = "doctest"})
+add_requires("doctest",     {alias = "doctest"})
 
 -- core target
 target("serris_core")
-    set_kind("shared")
+    set_kind("static")
     set_basename("serris")
 
     -- dependencies
     add_packages("utfcpp")
-    add_packages("fast_float", "tsl-robin-map")
-
+    add_packages("fast_float")
+    add_packages("fast_map", { public = true })
     -- headers
     add_headerfiles("include/serris/(**.h)")
     add_includedirs("include", {public = true})
@@ -61,7 +61,7 @@ target("serris_tests")
     -- package
     after_build(function (target)
         local builddir = target:targetdir()
-        local srcdir = path.join("$(projectdir)", "resources")
+        local srcdir = path.join("$(projectdir)", "tests", "resources")
         local destdir = path.join(builddir, "resources")
 
         os.mkdir(destdir)

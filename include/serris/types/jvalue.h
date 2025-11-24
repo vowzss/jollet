@@ -7,180 +7,114 @@
 
 #include <tsl/robin_map.h>
 
+#include "jtype.h"
+
 namespace serris::types {
-
     struct jvalue {
-        using jarray = std::vector<std::unique_ptr<jvalue>>;
-        using jobject = tsl::robin_map<std::string, std::unique_ptr<jvalue>>;
+        using jarray = std::vector<jtype>;
+        using jobject = tsl::robin_map<std::string, jtype>;
 
         template <typename T>
-        using enable_if_arithmetic_t = std::enable_if_t<std::is_arithmetic_v<T> && !std::is_same_v<T, bool>, int>;
+        using enable_if_integer_t =
+            std::enable_if_t<std::is_integral<T>::value && !std::is_same_v<T, bool> && !std::is_convertible_v<T, const char*>, int>;
 
         template <typename T>
-        using disable_if_arithmetic_t = std::enable_if_t<!std::is_arithmetic_v<T>, int>;
+        using enable_if_floating_t = std::enable_if_t<std::is_floating_point<T>::value, int>;
 
       private:
         std::variant<std::monostate, bool, int64_t, double, std::string, jobject, jarray> value_;
 
       public:
-        explicit jvalue() : value_(std::monostate{}) {}
-        explicit jvalue(bool val) : value_(val) {}
+        // --- constructors ---
+        inline explicit jvalue() noexcept : value_(std::monostate{}) {}
+        inline jvalue(const jvalue& other) { *this = other; }
+        inline jvalue(jvalue&& other) noexcept = default;
 
-        // --- string type ctor ---
-        explicit jvalue(const std::string& s) : value_(s) {}
-        explicit jvalue(std::string&& s) : value_(std::move(s)) {}
+        inline explicit jvalue(bool value) noexcept : value_(value) {}
 
-        // --- number types ctor ---
-        template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-        explicit jvalue(T val) {
-            if constexpr (std::is_floating_point_v<T>) {
-                value_ = static_cast<double>(val);
-            } else {
-                value_ = static_cast<int64_t>(val);
-            }
-        }
+        inline explicit jvalue(const std::string& value) : value_(value) {}
+        inline explicit jvalue(std::string&& value) noexcept : value_(std::move(value)) {}
+        inline explicit jvalue(const char* value) : value_(std::string(value)) {}
 
-        // --- object type ctor ---
-        explicit jvalue(const jobject& val) : value_(val) {}
-        explicit jvalue(jobject&& val) : value_(std::move(val)) {}
+        template <typename T, enable_if_integer_t<T> = 0>
+        inline explicit jvalue(T value) noexcept : value_(static_cast<int64_t>(value)) {}
 
-        // --- array type ctor ---
-        explicit jvalue(const jarray& val) : value_(val) {}
-        explicit jvalue(jarray&& val) : value_(std::move(val)) {}
+        template <typename T, enable_if_floating_t<T> = 0>
+        inline explicit jvalue(T value) noexcept : value_(static_cast<double>(value)) {}
+
+        inline jvalue(const jobject&) = delete;
+        inline explicit jvalue(jobject&& value) noexcept : value_(std::move(value)) {}
+
+        inline jvalue(const jarray&) = delete;
+        inline explicit jvalue(jarray&& value) noexcept : value_(std::move(value)) {}
 
         // --- accessors ---
-        template <typename T>
-        std::optional<T> try_as() const {
-            if constexpr (std::is_arithmetic_v<T>) {
-                if (const int64_t* v = std::get_if<int64_t>(&value_)) {
-                    return static_cast<T>(*v);
-                }
-                if (const double* v = std::get_if<double>(&value_)) {
-                    return static_cast<T>(*v);
-                }
-                return std::nullopt;
-            } else if constexpr (std::is_same_v<T, std::string>) {
-                if (const std::string* v = std::get_if<std::string>(&value_)) {
-                    return *v;
-                }
-                return std::nullopt;
-            } else if constexpr (std::is_same_v<T, jarray>) {
-                if (const jarray* v = std::get_if<jarray>(&value_)) {
-                    return *v;
-                }
-                return std::nullopt;
-            } else if constexpr (std::is_same_v<T, jobject>) {
-                if (const jobject* v = std::get_if<jobject>(&value_)) {
-                    return *v;
-                }
-                return std::nullopt;
-            } else {
-                static_assert(false, "type is not supported in jvalue");
-            }
-        }
+        std::optional<bool> try_as_bool() const noexcept;
+        bool as_bool() const;
 
-        template <typename T, enable_if_arithmetic_t<T> = 0>
-        T as() const {
-            if (auto val = try_as<T>()) return *val;
-            throw std::bad_variant_access();
-        }
+        const std::string* try_as_string() const noexcept;
+        const std::string& as_string() const;
 
-        // --- accessors (aliases for common types) ---
-        std::optional<bool> try_as_bool() const {
-            if (const bool* val = std::get_if<bool>(&value_)) return *val;
-            return std::nullopt;
-        }
-        bool as_bool() const {
-            if (std::optional<bool> val = try_as_bool()) return *val;
-            throw std::bad_variant_access();
-        }
+        std::optional<int> try_as_int() const noexcept;
+        int as_int() const;
 
-        const std::string* try_as_string() const {
-            if (const std::string* val = std::get_if<std::string>(&value_)) return val;
-            return nullptr;
-        }
-        const std::string& as_string() const {
-            if (const std::string* val = try_as_string()) return *val;
-            throw std::bad_variant_access();
-        }
+        std::optional<short> try_as_short() const noexcept;
+        short as_short() const;
 
-        std::optional<int> try_as_int() const { return try_as<int>(); }
-        int as_int() const { return as<int>(); }
+        std::optional<long> try_as_long() const noexcept;
+        long as_long() const;
 
-        std::optional<short> try_as_short() const { return try_as<short>(); }
-        short as_short() const { return as<short>(); }
+        std::optional<float> try_as_float() const noexcept;
+        float as_float() const;
 
-        std::optional<long> try_as_long() const { return try_as<long>(); }
-        long as_long() const { return as<long>(); }
+        std::optional<double> try_as_double() const noexcept;
+        double as_double() const;
 
-        std::optional<float> try_as_float() const { return try_as<float>(); }
-        float as_float() const { return as<float>(); }
+        const jobject* try_as_object() const noexcept;
+        const jobject& as_object() const;
 
-        std::optional<double> try_as_double() const { return try_as<double>(); }
-        double as_double() const { return as<double>(); }
-
-        const jobject* try_as_object() const {
-            if (const jobject* val = std::get_if<jobject>(&value_)) return val;
-            return nullptr;
-        }
-        const jobject& as_object() const {
-            if (const jobject* val = try_as_object()) return *val;
-            throw std::bad_variant_access();
-        }
-
-        const jarray* try_as_array() const {
-            if (const jarray* val = std::get_if<jarray>(&value_)) return val;
-            return nullptr;
-        }
-        const jarray& as_array() const {
-            if (const jarray* val = try_as_array()) return *val;
-            throw std::bad_variant_access();
-        }
-
-        // --- equality operators ---
-        bool operator==(const jvalue& other) const { return value_ == other.value_; }
-        bool operator!=(const jvalue& other) const { return !(*this == other); }
+        const jarray* try_as_array() const noexcept;
+        const jarray& as_array() const;
 
         // --- helpers ---
-        const jvalue* get(size_t idx) const {
-            if (const jarray* arr = std::get_if<jarray>(&value_)) {
-                if (idx < arr->size()) {
-                    return arr->at(idx).get();
-                }
-            }
-            return nullptr;
-        }
+        const jvalue* try_get(const std::string& key) const noexcept;
+        const jvalue& get(const std::string& key) const;
 
-        jvalue& insert(size_t idx) {
-            if (std::holds_alternative<std::monostate>(value_)) {
-                value_ = jarray{};
-            }
+        const jvalue* try_get(size_t idx) const noexcept;
+        const jvalue& get(size_t idx) const;
 
-            if (jarray* arr = std::get_if<jarray>(&value_)) {
-                if (idx >= arr->size()) {
-                    arr->resize(idx + 1);
-
-                    if (!(*arr)[idx]) {
-                        (*arr)[idx] = std::make_unique<jvalue>();
-                    }
-
-                    return *(*arr)[idx];
-                }
-
-                throw std::bad_variant_access();
-            }
-        }
+        jvalue& insert(const std::string& key);
+        jvalue& insert(size_t idx);
 
         // --- utilities ---
-        constexpr bool is_null() const { return std::holds_alternative<std::monostate>(value_); }
-        constexpr bool is_bool() const { return std::holds_alternative<bool>(value_); }
-        constexpr bool is_string() const { return std::holds_alternative<std::string>(value_); }
+        std::unique_ptr<jvalue> clone() const;
 
-        constexpr bool is_integer() const { return std::holds_alternative<int64_t>(value_); }
-        constexpr bool is_floating() const { return std::holds_alternative<double>(value_); }
-        constexpr bool is_number() const { return is_integer() || is_floating(); }
+        constexpr bool is_null() const noexcept;
+        constexpr bool is_bool() const noexcept;
+        constexpr bool is_string() const noexcept;
 
-        constexpr bool is_array() const { return std::holds_alternative<jarray>(value_); }
-        constexpr bool is_object() const { return std::holds_alternative<jobject>(value_); }
+        constexpr bool is_integer() const noexcept;
+        constexpr bool is_floating() const noexcept;
+        constexpr bool is_number() const noexcept;
+
+        constexpr bool is_array() const noexcept;
+        constexpr bool is_object() const noexcept;
+
+        // --- operators (deep-copy + move) ---
+        jvalue& operator=(const jvalue& other);
+        jvalue& operator=(jvalue&& other) noexcept = default;
+
+        // --- operators (equality) ---
+        bool operator==(const jvalue& other) const noexcept;
+        bool operator!=(const jvalue& other) const noexcept;
+
+        // --- operators (accessors) ---
+        jvalue& operator[](const std::string& key);
+        const jvalue& operator[](const std::string& key) const;
+
+        jvalue& operator[](size_t idx);
+        const jvalue& operator[](size_t idx) const;
     };
 }
+
+#include "jvalue.inl"
