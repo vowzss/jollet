@@ -5,11 +5,10 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "serris/providers/json.h"
-#include "serris/types/jvalue.h"
+#include "serris/providers/Json.h"
+#include "serris/types/JValue.h"
 
 using namespace serris;
-using namespace serris::types;
 
 namespace fs = std::filesystem;
 
@@ -25,22 +24,22 @@ static std::string format_duration(std::chrono::nanoseconds ns) {
     return oss.str();
 }
 
-TEST_CASE("types/jvalue.h: basic types") {
+TEST_CASE("types/JValue.h: basic types") {
 
     SUBCASE("null") {
-        jvalue val;
-        CHECK(val.is_null());
+        JValue val;
+        CHECK(val.isNull());
     }
 
     SUBCASE("bools") {
-        jvalue val1(true);
-        jvalue val2(false);
+        JValue val1(true);
+        JValue val2(false);
 
-        CHECK(val1.as_bool() == true);
-        CHECK(val2.as_bool() == false);
+        CHECK(val1.asBool() == true);
+        CHECK(val2.asBool() == false);
 
-        const std::optional<bool> val1_ptr = val1.try_as_bool();
-        const std::optional<bool> val2_ptr = val2.try_as_bool();
+        const std::optional<bool> val1_ptr = val1.tryAsBool();
+        const std::optional<bool> val2_ptr = val2.tryAsBool();
 
         REQUIRE(val1_ptr);
         REQUIRE(val2_ptr);
@@ -49,117 +48,110 @@ TEST_CASE("types/jvalue.h: basic types") {
     }
 
     SUBCASE("ints") {
-        jvalue val(123);
+        JValue val(123);
 
-        CHECK(val.as_int() == 123);
-        CHECK(val.as_short() == 123);
-        CHECK(val.as_long() == 123);
+        CHECK(val.asInt() == 123);
+        CHECK(val.asShort() == 123);
+        CHECK(val.asLong() == 123);
 
-        const std::optional<int> val_ptr = val.try_as_int();
+        const std::optional<int> val_ptr = val.tryAsInt();
         REQUIRE(val_ptr);
         CHECK(*val_ptr == 123);
     }
 
     SUBCASE("floats") {
-        jvalue val1(3.14f);
-        jvalue val2(2.718);
+        JValue val1(3.14f);
+        JValue val2(2.718);
 
-        CHECK(val1.as_float() == doctest::Approx(3.14f));
-        CHECK(val1.as_double() == doctest::Approx(3.14));
+        CHECK(val1.asFloat() == doctest::Approx(3.14f));
+        CHECK(val1.asDouble() == doctest::Approx(3.14));
 
-        CHECK(val2.as_double() == doctest::Approx(2.718));
-        CHECK(val2.as_float() == doctest::Approx(2.718f));
+        CHECK(val2.asDouble() == doctest::Approx(2.718));
+        CHECK(val2.asFloat() == doctest::Approx(2.718f));
 
-        const std::optional<double> val2_ptr = val2.try_as_double();
+        const std::optional<double> val2_ptr = val2.tryAsDouble();
         REQUIRE(val2_ptr);
         CHECK(*val2_ptr == doctest::Approx(2.718));
     }
 
     SUBCASE("strings") {
-        jvalue val1(std::string("hello"));
-        jvalue val2("world");
+        JValue val1(std::string("hello"));
+        JValue val2("world");
 
-        CHECK(val1.as_string() == "hello");
-        CHECK(val2.as_string() == "world");
+        CHECK(val1.asString() == "hello");
+        CHECK(val2.asString() == "world");
 
-        auto val1_ptr = val1.try_as_string();
+        auto val1_ptr = val1.tryAsString();
         REQUIRE(val1_ptr);
         CHECK(*val1_ptr == "hello");
 
-        auto val2_ptr = val2.try_as_string();
+        auto val2_ptr = val2.tryAsString();
         REQUIRE(val2_ptr);
         CHECK(*val2_ptr == "world");
     }
 }
 
-TEST_CASE("types/jvalue.h: containers") {
-
+TEST_CASE("types/JValue.h: containers") {
     SUBCASE("objects") {
-        jvalue obj(jvalue::jobject{});
-        obj["a"] = jvalue(1);
-        obj["b"] = jvalue(2);
-        obj["c"] = jvalue(3);
+        JValue obj = JValue::makeObject();
+        obj["a"] = JValue(1);
+        obj["b"] = JValue(2);
+        obj["c"] = JValue(3);
 
-        CHECK(obj["a"].as_int() == 1);
-        CHECK(obj["b"].as_int() == 2);
+        CHECK(obj["a"].asInt() == 1);
+        CHECK(obj["b"].asInt() == 2);
 
-        obj["c"] = jvalue(3);
-        CHECK(obj["c"].as_int() == 3);
+        obj["c"] = JValue(3);
+        CHECK(obj["c"].asInt() == 3);
 
-        auto obj_ptr = obj.try_as_object();
-        REQUIRE(obj_ptr);
-        CHECK(obj_ptr->at("a")->as_int() == 1);
+        CHECK(obj["a"].asInt() == 1);
     }
 
     SUBCASE("arrays") {
-        jvalue arr(jvalue::jarray{});
-        arr[0] = jvalue(1);
-        arr[1] = jvalue(2);
-        arr[2] = jvalue(3);
+        JValue arr = JValue::makeArray();
+        arr[0] = JValue(1);
+        arr[1] = JValue(2);
+        arr[2] = JValue(3);
 
-        CHECK(arr[0].as_int() == 1);
-        CHECK(arr[1].as_int() == 2);
-        CHECK(arr[2].as_int() == 3);
+        CHECK(arr[0].asInt() == 1);
+        CHECK(arr[1].asInt() == 2);
+        CHECK(arr[2].asInt() == 3);
 
-        arr[1] = jvalue(42);
-        CHECK(arr[1].as_int() == 42);
+        arr[1] = JValue(42);
+        CHECK(arr[1].asInt() == 42);
 
-        arr[5] = jvalue(99);
-        CHECK(arr[5].as_int() == 99);
-
-        auto arr_ptr = arr.try_as_array();
-        REQUIRE(arr_ptr);
-        CHECK(arr_ptr->size() >= 6);
+        arr[5] = JValue(99);
+        CHECK(arr[5].asInt() == 99);
     }
 
     SUBCASE("nested objects and arrays") {
-        jvalue obj(jvalue::jobject{});
-        obj["numbers"][0] = jvalue(1);
-        obj["numbers"][1] = jvalue(2);
-        obj["numbers"][2] = jvalue(3);
-        obj["info"]["name"] = jvalue("Chad");
-        obj["info"]["age"] = jvalue(30);
+        JValue obj = JValue::makeObject();
+        obj["numbers"][0] = JValue(1);
+        obj["numbers"][1] = JValue(2);
+        obj["numbers"][2] = JValue(3);
+        obj["info"]["name"] = JValue("Chad");
+        obj["info"]["age"] = JValue(30);
 
-        CHECK(obj["numbers"][0].as_int() == 1);
-        CHECK(obj["numbers"][2].as_int() == 3);
-        CHECK(obj["info"]["name"].as_string() == "Chad");
-        CHECK(obj["info"]["age"].as_int() == 30);
+        CHECK(obj["numbers"][0].asInt() == 1);
+        CHECK(obj["numbers"][2].asInt() == 3);
+        CHECK(obj["info"]["name"].asString() == "Chad");
+        CHECK(obj["info"]["age"].asInt() == 30);
     }
 }
 
-TEST_CASE("types/jvalue.h: equality") {
+TEST_CASE("types/JValue.h: equality") {
     SUBCASE("primitive equality") {
-        jvalue a(42);
-        jvalue b(42);
-        jvalue c(43);
+        JValue a(42);
+        JValue b(42);
+        JValue c(43);
 
         CHECK(a == b);
         CHECK(a != c);
     }
 
     SUBCASE("object equality") {
-        jvalue obj{jvalue::jobject{}};
-        obj["x"] = jvalue(1);
+        JValue obj = JValue::makeObject();
+        obj["x"] = JValue(1);
 
         auto val1 = obj.clone();
         auto val2 = obj.clone();
@@ -169,21 +161,21 @@ TEST_CASE("types/jvalue.h: equality") {
 }
 
 TEST_CASE("providers/json.h: serialize") {
-    jvalue obj(jvalue::jobject{});
-    obj["numbers"][0] = jvalue(1);
-    obj["numbers"][1] = jvalue(2);
-    obj["numbers"][2] = jvalue(3);
-    obj["info"]["name"] = jvalue("Chad");
-    obj["info"]["age"] = jvalue(30);
-    obj["info"]["skills"][0] = jvalue("C++");
-    obj["info"]["skills"][1] = jvalue("Python");
-    obj["pi"] = jvalue(3.141592653589793);
-    obj["big_number"] = jvalue(9223372036854775807);
-    obj["small_number"] = jvalue(-32768);
-    obj["float_val"] = jvalue(2.71828);
+    JValue obj = JValue::makeObject();
+    obj["numbers"][0] = JValue(1);
+    obj["numbers"][1] = JValue(2);
+    obj["numbers"][2] = JValue(3);
+    obj["info"]["name"] = JValue("Chad");
+    obj["info"]["age"] = JValue(30);
+    obj["info"]["skills"][0] = JValue("C++");
+    obj["info"]["skills"][1] = JValue("Python");
+    obj["pi"] = JValue(3.141592653589793);
+    obj["big_number"] = JValue(9223372036854775807);
+    obj["small_number"] = JValue(-32768);
+    obj["float_val"] = JValue(2.71828);
 
     SUBCASE("compact JSON") {
-        std::string compact = providers::json::serialize(obj);
+        std::string compact = Json::serialize(obj);
         std::cout << "Compact JSON:\n" << compact << "\n";
 
         CHECK(!compact.empty());
@@ -192,7 +184,7 @@ TEST_CASE("providers/json.h: serialize") {
     }
 
     SUBCASE("pretty JSON") {
-        std::string pretty = providers::json::serialize(obj, true);
+        std::string pretty = Json::serialize(obj, true);
         std::cout << "Pretty JSON:\n" << pretty << "\n";
 
         CHECK(!pretty.empty());
@@ -216,34 +208,33 @@ TEST_CASE("providers/json.h: deserialize") {
         "float_val": 2.71828
     })";
 
-    jvalue root = providers::json::deserialize(json);
+    JValue root = Json::deserialize(json);
+    REQUIRE(!root.isNull());
 
-    const jvalue::jobject* obj = root.try_as_object();
-    REQUIRE(obj != nullptr);
-
-    const jvalue::jarray* numbers = obj->at("numbers")->try_as_array();
+    const JValue* numbers = root.find("numbers");
     REQUIRE(numbers != nullptr);
-    CHECK((*numbers)[0]->try_as_int().value() == 1);
-    CHECK((*numbers)[1]->try_as_int().value() == 2);
-    CHECK((*numbers)[2]->try_as_int().value() == 3);
 
-    const jvalue::jobject* info = root["info"].try_as_object();
+    CHECK(numbers[0].tryAsInt().value() == 1);
+    CHECK(numbers[1].tryAsInt().value() == 2);
+    CHECK(numbers[2].tryAsInt().value() == 3);
+
+    const JValue* info = root.find("info");
     REQUIRE(info != nullptr);
 
-    const std::string* name = info->at("name")->try_as_string();
+    const std::string* name = info->find("name")->tryAsString();
     REQUIRE(name != nullptr);
     CHECK(*name == "Chad");
-    CHECK(info->at("age")->try_as_int().value() == 30);
+    CHECK(info->find("age")->tryAsInt().value() == 30);
 
-    CHECK(root["pi"].try_as_double().value() == doctest::Approx(3.141592653589793));
-    CHECK(root["big_number"].try_as_long().value() == 9223372036854775807LL);
-    CHECK(root["small_number"].try_as_short().value() == -32768);
-    CHECK(root["float_val"].try_as_float().value() == doctest::Approx(2.71828f));
+    CHECK(root["pi"].tryAsDouble().value() == doctest::Approx(3.141592653589793));
+    CHECK(root["big_number"].tryAsLong().value() == 9223372036854775807LL);
+    CHECK(root["small_number"].tryAsShort().value() == -32768);
+    CHECK(root["float_val"].tryAsFloat().value() == doctest::Approx(2.71828f));
 
-    const jvalue::jarray* skills = info->at("skills")->try_as_array();
+    const JValue* skills = info->find("skills");
     REQUIRE(skills != nullptr);
-    CHECK(*(*skills)[0]->try_as_string() == "C++");
-    CHECK(*(*skills)[1]->try_as_string() == "Python");
+    CHECK(*skills[0].tryAsString() == "C++");
+    CHECK(*skills[1].tryAsString() == "Python");
 }
 
 TEST_CASE("providers/json.h: from_file") {
@@ -252,7 +243,7 @@ TEST_CASE("providers/json.h: from_file") {
     std::cout << fullPath << "\n";
 
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-    std::optional<jvalue> root = providers::json::from_file(fullPath);
+    std::optional<JValue> root = Json::fromFile(fullPath);
     std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
 
     std::cout << "Took: " << format_duration(end - start) << 'ms.\n';

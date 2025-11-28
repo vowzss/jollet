@@ -1,21 +1,18 @@
-#include "serris/providers/json.h"
+#include "serris/providers/Json.h"
 
 #include <array>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <memory>
 #include <optional>
 #include <ostream>
 #include <sstream>
 #include <string>
 #include <utility>
 
-#include "serris/types/jvalue.h"
+#include "serris/types/JValue.h"
 
-using namespace serris::types;
-
-namespace serris::providers {
+namespace serris {
     namespace {
         // clang-format off
         constexpr const char* control[32] = {
@@ -51,13 +48,13 @@ namespace serris::providers {
             return table;
         }();
 
-        inline void skip_whitespace(const std::string& s, size_t& pos) {
+        inline void skipWhitespace(const std::string& s, size_t& pos) {
             while (pos < s.size() && std::isspace(static_cast<unsigned char>(s[pos]))) {
                 ++pos;
             }
         }
 
-        inline void append_escaped(std::string& out, const std::string& s) {
+        inline void appendEscaped(std::string& out, const std::string& s) {
             out.push_back('"');
             for (unsigned char c : s) {
                 out += escape_lookup[c];
@@ -65,7 +62,7 @@ namespace serris::providers {
             out.push_back('"');
         }
 
-        inline void append_codepoint(std::string& out, unsigned int cp) {
+        inline void appendCodepoint(std::string& out, unsigned int cp) {
             if (cp <= 0x7F) {
                 out += char(cp);
             } else if (cp <= 0x7FF) {
@@ -83,14 +80,14 @@ namespace serris::providers {
             }
         }
 
-        void append_number(std::string& out, const jvalue& val) {
-            if (val.is_integer()) {
-                out += std::to_string(val.try_as_double().value());
+        void appendNumber(std::string& out, const JValue& val) {
+            if (val.isInteger()) {
+                out += std::to_string(val.tryAsDouble().value());
                 return;
             }
 
-            if (val.is_floating()) {
-                double d = val.try_as_double().value();
+            if (val.isFloating()) {
+                double d = val.tryAsDouble().value();
 
                 std::ostringstream oss;
                 oss << std::setprecision(17) << d;
@@ -177,7 +174,7 @@ namespace serris::providers {
                                 }
                             }
 
-                            append_codepoint(out, cp);
+                            appendCodepoint(out, cp);
                             break;
                         }
                         default:
@@ -192,7 +189,7 @@ namespace serris::providers {
             throw std::runtime_error("unterminated string");
         }
 
-        inline jvalue parse_number(const std::string& s, size_t& pos) {
+        inline JValue parse_number(const std::string& s, size_t& pos) {
             size_t start = pos;
             bool is_float = false;
 
@@ -206,48 +203,48 @@ namespace serris::providers {
             std::string num_str = s.substr(start, pos - start);
 
             if (is_float) {
-                return jvalue{std::stod(num_str)};
+                return JValue{std::stod(num_str)};
             } else {
-                return jvalue{std::stoll(num_str)};
+                return JValue{std::stoll(num_str)};
             }
         }
 
-        inline void serialize_impl(const jvalue& val, std::string& out, bool pretty, int indent) {
-            if (val.is_null()) {
+        inline void serialize_impl(const JValue& val, std::string& out, bool pretty, int indent) {
+            if (val.isNull()) {
                 out += "null";
                 return;
             }
 
-            if (std::optional<bool> v = val.try_as_bool()) {
+            if (std::optional<bool> v = val.tryAsBool()) {
                 out += *v ? "true" : "false";
                 return;
             }
 
-            if (const std::string* v = val.try_as_string()) {
-                append_escaped(out, *v);
+            if (const std::string* v = val.tryAsString()) {
+                appendEscaped(out, *v);
                 return;
             }
 
-            if (val.is_number()) {
-                append_number(out, val);
+            if (val.isNumber()) {
+                appendNumber(out, val);
                 return;
             }
 
             const std::string indent_str(indent, ' ');
             const std::string indent_next(indent + 2, ' ');
 
-            if (const jvalue::jobject* obj = val.try_as_object()) {
+            if (val.isObject()) {
                 out += '{';
                 if (pretty) out += '\n';
 
                 bool first = true;
-                for (const auto& [k, v] : *obj) {
+                for (const auto& entry : val.entries()) {
                     if (!first) out += pretty ? ",\n" : ",";
                     if (pretty) out += indent_next;
 
-                    append_escaped(out, k);
+                    appendEscaped(out, entry.key);
                     out += pretty ? ": " : ":";
-                    serialize_impl(*v.get(), out, pretty, indent + 2);
+                    serialize_impl(entry.value, out, pretty, indent + 2);
                     first = false;
                 }
 
@@ -256,16 +253,16 @@ namespace serris::providers {
                 return;
             }
 
-            if (const jvalue::jarray* arr = val.try_as_array()) {
+            if (val.isArray()) {
                 out += '[';
                 if (pretty) out += '\n';
 
                 bool first = true;
-                for (const auto& v : *arr) {
+                for (const auto& elm : val.elements()) {
                     if (!first) out += pretty ? ",\n" : ",";
                     if (pretty) out += indent_next;
 
-                    serialize_impl(*v.get(), out, pretty, indent + 2);
+                    serialize_impl(elm.value, out, pretty, indent + 2);
                     first = false;
                 }
 
@@ -277,8 +274,8 @@ namespace serris::providers {
             out += "null";
         }
 
-        inline jvalue deserialize_impl(const std::string& s, size_t& pos) {
-            skip_whitespace(s, pos);
+        inline JValue deserialize_impl(const std::string& s, size_t& pos) {
+            skipWhitespace(s, pos);
             if (pos >= s.size()) {
                 throw std::runtime_error("Unexpected end of input");
             }
@@ -287,51 +284,51 @@ namespace serris::providers {
 
             if (s.compare(pos, 4, "null") == 0) {
                 pos += 4;
-                return jvalue{};
+                return JValue{};
             }
 
             if (s.compare(pos, 4, "true") == 0) {
                 pos += 4;
-                return jvalue{true};
+                return JValue(true);
             }
             if (s.compare(pos, 5, "false") == 0) {
                 pos += 5;
-                return jvalue{false};
+                return JValue(false);
             }
 
             if (c == '"') {
-                return jvalue{parse_string(s, pos)};
+                return JValue(parse_string(s, pos));
             }
 
             if (c == '-' || std::isdigit(c)) {
-                return parse_number(s, pos);
+                return JValue(parse_number(s, pos));
             }
 
             if (c == '{') {
-                jvalue::jobject obj = jvalue::jobject{};
+                JValue obj{};
 
                 ++pos;
-                skip_whitespace(s, pos);
+                skipWhitespace(s, pos);
 
                 bool first = true;
                 while (pos < s.size() && s[pos] != '}') {
                     if (!first) {
                         if (s[pos] == ',') ++pos;
-                        skip_whitespace(s, pos);
+                        skipWhitespace(s, pos);
                     }
 
                     std::string key = parse_string(s, pos);
-                    skip_whitespace(s, pos);
+                    skipWhitespace(s, pos);
 
                     if (pos >= s.size() || s[pos] != ':') {
                         throw std::runtime_error("Expected ':' in object");
                     }
 
                     ++pos;
-                    obj[key] = std::make_unique<jvalue>(deserialize_impl(s, pos));
+                    obj[key] = deserialize_impl(s, pos);
 
                     first = false;
-                    skip_whitespace(s, pos);
+                    skipWhitespace(s, pos);
                 }
 
                 if (pos >= s.size() || s[pos] != '}') {
@@ -339,26 +336,26 @@ namespace serris::providers {
                 }
 
                 ++pos;
-                return jvalue{std::move(obj)};
+                return JValue(std::move(obj));
             }
 
             // array
             if (c == '[') {
-                jvalue::jarray arr = jvalue::jarray{};
+                JValue arr{};
 
                 ++pos;
-                skip_whitespace(s, pos);
+                skipWhitespace(s, pos);
 
                 bool first = true;
                 while (pos < s.size() && s[pos] != ']') {
                     if (!first) {
                         if (s[pos] == ',') ++pos;
-                        skip_whitespace(s, pos);
+                        skipWhitespace(s, pos);
                     }
 
-                    arr.emplace_back(deserialize_impl(s, pos));
+                    arr.emplace(deserialize_impl(s, pos));
                     first = false;
-                    skip_whitespace(s, pos);
+                    skipWhitespace(s, pos);
                 }
 
                 if (pos >= s.size() || s[pos] != ']') {
@@ -366,25 +363,25 @@ namespace serris::providers {
                 }
 
                 ++pos;
-                return jvalue{std::move(arr)};
+                return JValue(std::move(arr));
             }
 
             throw std::runtime_error(std::string("Unexpected character '") + c + "'");
         }
     }
 
-    std::string json::serialize(const jvalue& val, bool pretty) {
+    std::string Json::serialize(const JValue& val, bool pretty) {
         std::string out;
         out.reserve(256);
         serialize_impl(val, out, pretty, 0);
         return out;
     }
 
-    jvalue json::deserialize(const std::string& str) {
+    JValue Json::deserialize(const std::string& str) {
         size_t pos = 0;
 
-        jvalue result = deserialize_impl(str, pos);
-        skip_whitespace(str, pos);
+        JValue result = deserialize_impl(str, pos);
+        skipWhitespace(str, pos);
 
         if (pos != str.size()) {
             throw std::runtime_error("Extra characters after JSON value");
@@ -393,7 +390,7 @@ namespace serris::providers {
         return result;
     }
 
-    std::optional<jvalue> json::from_file(const std::string& path) {
+    std::optional<JValue> Json::fromFile(const std::string& path) {
         std::ifstream file(path);
         if (!file.is_open()) {
             return std::nullopt;
